@@ -1,4 +1,10 @@
-// Modul zur Erstellung der Datenbank
+// Modul zur Erstellung der Datenbank und die Befüllung mit Daten
+// Tabelle tableAccounts -> Accountdaten/Logindaten
+// Tabelle tableCard -> Warenkorb
+// Tabelle tableMainCategory -> Hauptkategoriedaten
+// Tabelle tableSubCategory -> Unterkategoriedaten
+// Tabelle tableProducts -> Produktdaten
+
 
 import java.sql.Connection
 import java.sql.DriverManager
@@ -8,13 +14,12 @@ import java.io.File
 
 // Funktion zur Erstellung der Datenbank und hinzufügen von Produkten
 fun createDatabase() {
-
     // Datenbank Namen vergeben
     val dbFile = File("Database.db")
-    // Prüfen ob, bereits eine Datenbank vorhanden ist um diese zu löschen
-    if (dbFile.exists()) {
-        dbFile.delete()
-    }
+
+    // Prüfen ob, bereits eine Datenbank vorhanden ist um diese zu löschen (wurde hinzugefügt, um eine saubere Datenbank während der
+    // testphase zu haben, kann aber auch entfernt werden.
+    if (dbFile.exists()) { dbFile.delete() }
 
     // Ort zur Speicherung der Datenbank im Projektordner
     val url = "jdbc:sqlite:Database.db"
@@ -24,16 +29,17 @@ fun createDatabase() {
     connection.autoCommit = true
     val statement = connection.createStatement()
 
-    // Tabelleneigenschaften für die Accounts festlegen
+    // Tabelle für Accounts erstellen
     val tableAccounts = """
         CREATE TABLE IF NOT EXISTS accounts (
             userName TEXT NOT NULL,
             userPassword TEXT NOT NULL,
             userAge INT,
-            paymentMethod TEXT
+            paymentMethod TEXT,
+            allocation INT
         );
     """
-    // Tabelleneigenschaften für den Warenkorb festlegen
+    // Tabelle für den Warenkorb erstellen
     val tableCard = """
         CREATE TABLE IF NOT EXISTS shoppingCard (
             user TEXT,
@@ -42,21 +48,21 @@ fun createDatabase() {
             price DOUBLE
         );
     """
-    // Tabelleneigenschaften für die Hauptkategorie festlegen
+    // Tabelle für die Hauptkategorie erstellen
     val tableMainCategory = """
         CREATE TABLE IF NOT EXISTS mainCategory (
             name TEXT NOT NULL
         );
     """
 
-    // Tabelleneigenschaften für die Unterkategorie festlegen
+    // Tabelle für die Unterkategorie erstellen
     val tableSubCategory = """
         CREATE TABLE IF NOT EXISTS subCategory (
             mainCategoryLink TEXT NOT NULL,
             name TEXT NOT NULL
         );
     """
-    // Tabelleneigenschaften für die Produkte festlegen
+    // Tabelle für die Produkte erstellen
     val tableProducts = """
         CREATE TABLE IF NOT EXISTS products (
             product_id INTEGER,
@@ -75,22 +81,26 @@ fun createDatabase() {
     statement.executeUpdate(tableSubCategory)
     statement.executeUpdate(tableProducts)
 
-    // Erstellen eines Kunden- und Adminkontos
-    val insertAccount = "INSERT INTO accounts (userName, userPassword, userAge, paymentMethod) VALUES (?, ?, ?, ?)"
+
+// Ab hier werden die Tabellen mit Daten/Werte befüllt ------------------------------------------------------------
+
+    // Erstellen eines Kunden- und Adminkonto
+    val insertAccount = "INSERT INTO accounts (userName, userPassword, userAge, paymentMethod, allocation) VALUES (?, ?, ?, ?, ?)"
     val preparedStatement: PreparedStatement = connection.prepareStatement(insertAccount)
-    // Testaccount Kunde
+    // Kunden Account
     preparedStatement.setString(1, "Max")
     preparedStatement.setString(2, "12345")
     preparedStatement.setInt(3, 26)
     preparedStatement.setString(4, "Paypal")
+    preparedStatement.setInt(5, 1)
     preparedStatement.executeUpdate()
     // Admin Account
     preparedStatement.setString(1, "Admin")
     preparedStatement.setString(2, "12345")
     preparedStatement.setInt(3, 0)
     preparedStatement.setString(4, "")
+    preparedStatement.setInt(5, 2)
     preparedStatement.executeUpdate()
-
 
     // Daten in Hauptkategorietabelle einfügen
     val insertMainCategory = "INSERT INTO mainCategory (name) VALUES (?)"
@@ -101,7 +111,6 @@ fun createDatabase() {
     preparedStatement2.executeUpdate()
     preparedStatement2.setString(1, "Zubehör")
     preparedStatement2.executeUpdate()
-
 
     // Daten in Unterkategorietabelle einfügen
     val insertSubCategory = "INSERT INTO subCategory (mainCategoryLink, name) VALUES (?, ?)"
@@ -133,7 +142,6 @@ fun createDatabase() {
     preparedStatement3.setString(1, "Zubehör")
     preparedStatement3.setString(2, "Eingabegeräte")
     preparedStatement3.executeUpdate()
-
 
     // Daten in Produkttabelle einfügen
     val insertProducts = "INSERT INTO products (product_id, subCategoryLink, name, price, amount, review) VALUES (?, ?, ?, ?, ?, ?)"

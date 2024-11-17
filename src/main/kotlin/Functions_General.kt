@@ -1,206 +1,49 @@
 // Modul mit 7 Funktionen für Auswahlmenüs
-// mainMenue() -> Zeigt das Hauptmenü an
-// customerMenue() -> Zeigt das Kundenmenü an
-// adminMenue() -> Zeigt das Admin Menü an
-// login() -> Zeigt das Login Menü an
 // addReviews() -> Funktion um eine Produktbewertung abzugeben
 // produktList() ->  Zeigt die Produktliste anhand der Auswahl von Kategorien
-// totalProductList() -> Zeigt Produktliste mit allen Produkten an
+// totalProductList() -> Zeigt Produktliste mit allen Produkten
+// filterOptions() -> Filteroptionen für totalProductList()
 
 
-import java.sql.DriverManager
-import java.sql.PreparedStatement
-import java.sql.ResultSet
-
-
-fun main(){ mainMenue()}
-
-// Aufruf des Hauptmenü
-fun mainMenue() {
-    println("\n### Willkommen im PC-Store© Germany ###")
-    println("\n### Hauptmenü ###")
-    println("[1] Anmelden\n[2] Account erstellen\n[3] Beenden")
-    println("\nBitte Auswahl treffen:")
-
-
-    val userinput = safeExecute {
-        val input = readln()
-        val validInput = input?.toIntOrNull()
-            ?: throw IllegalArgumentException("${errorMessage()} ${customerMenue()}")
-        validInput
-    }
-
-    // Nutzereingabe wird verarbeitet und an die jeweilige Funktion übergeben
-    when (userinput.toInt()) {
-        1 -> login()  // Aufruf des Login Menüs
-        2 -> addAccount() // Aufruf des Account Menüs zum Anlegen eines neuen Accounts
-        3 -> return println("Auf wiedersehen!") // Beendet das Programm
-        else -> {  // Falls Eingabe des Nutzers nicht in der Auswahlliste vorhanden ist
-            println("Eingabe nicht erkannt! Bitte erneut eingeben:") // Fehlermeldung
-            mainMenue()  // Ruft bei Fehleingabe des Nutzers die Funktion (rekursiv) erneut auf.
-        }
-    }
-}
-
-
-// Aufruf des Kundenmenü
-fun customerMenue() {
-
-    println("\n### Mein Kunden Menü ###")
-    println("[1] Mein Warenkorb, [2] zum Shop, [3] Alle Produkte, [4] Produkt bewerten")
-    println("Bitte Auswahl eingeben:")
-
-    val userInputCustom = safeExecute {
-        val input = readln()
-        val validInput = input?.toIntOrNull()
-            ?: throw IllegalArgumentException("${errorMessage()} ${customerMenue()}")
-        validInput
-    }
-
-    when (userInputCustom) {
-        1 -> showCard()
-        2 -> produktList()
-        3 -> totalProductList()
-        4 -> addReviews()
-        else -> {
-            println("Eingabe nicht erkannt! Bitte erneut eingeben.")
-            customerMenue() // Funktion rekursiv erneut aufrufen
-        }
-    }
-
-    // Ressourcen schließen
-    statement.close()
-    connection.close()
-}
-
-
-// Aufruf des Adminmenü
-fun adminMenue() {
-    println("\n### Admin Menü ###")
-    println("[1] Produkt hinzufügen\n[2] Produkt entfernen\n[3] Produktbestand auffüllen\n" +
-            "[4] Accountliste\n[5] Beenden")
-    println("Bitte Auswahl treffen:")
-
-    val adminInput = safeExecute {
-        val input = readln()
-        val validInput = input?.toIntOrNull()
-            ?: throw IllegalArgumentException("${errorMessage()} ${adminMenue()}")
-        validInput
-
-    }
-
-    when (adminInput) {
-        1 -> addProducts()
-        2 -> delProduct()
-        3 -> orderProduct()
-        4 -> showAccounts()
-        5 -> return
-        else -> println("Eingabe nicht erkannt! Bitte erneut versuchen: ${adminMenue()}")
-    }
-}
-
-
-// Aufruf des Login Menü
-fun login() {
-    println("\n### Anmeldung ###")
-    println("\nGeben Sie Ihren Benutzernamen ein:")
-    val username = readln()
-    println("Geben Sie Ihr Passwort ein:")
-    val password = readln()
-
-    // Verbindung zur Datenbank aufbauen
-    val url = "jdbc:sqlite:Database.db"
-    val connection = DriverManager.getConnection(url)
-
-    // Warenkorb Daten leeren
-    val deleteQuery = "DELETE FROM shoppingCard"
-    val deleteStatement = connection.createStatement()
-    deleteStatement.executeUpdate(deleteQuery)
-
-    // Prüfen ob die Eingaben in der der Datenbank vorhanden sind
-    val query = "SELECT * FROM accounts WHERE userName = ? AND userPassword = ?"
-    val statement: PreparedStatement = connection.prepareStatement(query)
-    statement.setString(1, username)
-    statement.setString(2, password)
-
-    // Ergebnis speichern
-    val resultSet: ResultSet = statement.executeQuery()
-
-    // IF Abfrage ob Daten vorhanden sind oder nicht
-    if (resultSet.next()) {
-        println("\nAnmeldung erfolgreich! Herzlich Willkommen $username")
-
-        // Prüfen ob ein Kunde oder Admin sich eingeloggt hat
-        if (username == "Admin") {
-            // Falls sich ein Admin angemeldet hat
-            deleteStatement.close()
-            connection.close()
-            adminMenue()
-
-        } else {  // Falls sich ein Kunde angemeldet hat
-            // Einfügen der Nutzer Daten in seine shoppingCard (Warenkorb)
-            val insertProducts = "INSERT INTO shoppingCard (user, paymentMethod) VALUES (?, ?)"
-            val preparedStatement: PreparedStatement = connection.prepareStatement(insertProducts)
-
-            // Zahlungsmethode anhand des Nutzernamens auslesen und in Warenkorb einfügen
-            val paymentMethodQuery = "SELECT paymentMethod FROM accounts WHERE userName = ?"
-            val paymentMethodStatement: PreparedStatement = connection.prepareStatement(paymentMethodQuery)
-            paymentMethodStatement.setString(1, username)
-
-            // Ausführen der Abfrage und Abrufen des paymentMethod-Werts
-            val paymentMethodResult: ResultSet = paymentMethodStatement.executeQuery()
-            if (paymentMethodResult.next()) {
-                val paymentMethod = paymentMethodResult.getString("paymentMethod")
-
-                // Setzen der Werte im PreparedStatement
-                preparedStatement.setString(1, username)
-                preparedStatement.setString(2, paymentMethod)
-
-                // Ausführen der SQL-Insert-Anweisung, um die Daten in die Datenbank einzufügen
-                preparedStatement.executeUpdate()
-
-                // Schließen der Statement-Objekte und Verbindung
-                preparedStatement.close()
-                paymentMethodStatement.close()
-                deleteStatement.close()
-                connection.close()
-
-                customerMenue()
-            }
-        }
-    } else {
-        println("\nBenutzername oder Passwort ist falsch! Bitte erneut versuchen!")
-        login()
-    }
-}
-
+fun main() { addReviews()}
 
 // Funktion um Produktbewertung abzugeben
 fun addReviews() {
     // Aufruf der Funktion zur Anzeige der Produktliste
-    showProdukts()
-
-    val reviewManager = productReviewManager()
+    val allProducts = showProductList().getAllProducts()
+    println("\n### Produktliste ###")
+    showProductList().printProductList(allProducts)
 
     // Abfrage welches Produkt bewertet werden soll
     println("\nBitte die Produkt-ID eingeben für das zu bewertende Produkt:")
-    val productId = readln().toInt()
+    val productId = safeExecute {
+        val input = readln()
+        val validInput = input.toIntOrNull()
+            ?: throw IllegalArgumentException("${errorMessage()} ${addReviews()} ")
+        validInput
+    }
+
     // Bewertung eingeben
     println("Geben Sie die Bewertung ein:")
     val review = readln()
 
     // Aufruf der Klasse zur Speicherung der Bewertung
+    val reviewManager = productReviewManager()
     reviewManager.submitReview(productId, review)
 }
 
 
-// Aufruf des der Produktliste
+// Aufruf der Auswahlliste für Produkte durch Kategorieauswahl
 fun produktList() {
     println("\n### Hauptkategorie ###")
     val mainCategories = MainCategory.getAllCategories()
     mainCategories.forEachIndexed { index, category -> println("${index + 1}. ${category.name}") }
 
-    // Let the user choose a main category
+    // Nutzereingabe für die Haupt-Kategorieauswahl
+    // .minus(1) ist für die Indizierung notwendig, da die erste Zeile im Index = 0 ist und der Nutzer aber
+    // eine 1 eingeben soll. Also Eingabe 1 = Index 0
+    // Mann könnte auch den Nutzer das Menu mit 0 beginnend anzeigen. Wäre aber unschön,
+    // da alle anderen Menülisten mit 1 beginnen
     print("\nWählen Sie anhand der Nummer eine Kategorie aus oder\nWarenkorb anzeigen die [4] ein:")
     val userInputMainCategory = safeExecute {
         val input = readln()
@@ -208,58 +51,80 @@ fun produktList() {
             ?: throw IllegalArgumentException("${errorMessage()} ${produktList()}")
         validInput
     }
-
+    // Bei Nutzereingabe für Warenkorbanzeige
     if (userInputMainCategory == 3) {
         showCard()
+    // Andernfalls weiter im Programm um Unterkategorie auszuwählen und Produkliste anzuzeigen
     } else {
+        // Überprüft ob, die ausgewählte Hauptkategorie in der Datenbank vorhanden ist und wenn ja, dann gib alle
+        // Wert (Unterkategorien) aus dieser Hauptkategorie aus
         userInputMainCategory?.let { mainIndex ->
             if (mainIndex in mainCategories.indices) {
                 val mainCategoryName = mainCategories[mainIndex].name
 
+                // Ausgabe der Unterkategorien zur ausgewählten Hauptkategorie
                 println("\n### Unterkategorie: $mainCategoryName ###")
                 val subCategories = SubCategory.getSubcategoriesByMainCategory(mainCategoryName)
                 subCategories.forEachIndexed { index, subCategory -> println("${index + 1}. ${subCategory.name}") }
 
-                // Let the user choose a subcategory
+                // Auswahl einer Unterkategorie des Nutzers
                 print("\nWählen Sie eine Unterkategorie aus: ")
-                val userInputSubCategory = readLine()?.toIntOrNull()?.minus(1)
+                // Auswahl der Unterkategorie
+                val userInputSubCategory: Int? = safeExecute {
+                    val input = readln()
+                    input.toIntOrNull()?.minus(1)
+                        ?: throw IllegalArgumentException("${errorMessage()} ${produktList()}")
+                }
 
+                // Ausgabe der Produkte in der ausgwählten Unterkategorie
                 userInputSubCategory?.let { subIndex ->
                     if (subIndex in subCategories.indices) {
                         val subCategoryName = subCategories[subIndex].name
 
+                        // Ausgabe der Produktliste
                         println("\n### Produkte ###")
                         val products = Productlist.getProductsBySubCategory(subCategoryName)
-
                         products.forEach { product ->
                             println("Produkt-ID: ${product.productId} | Artikel: ${product.name} | Preis: ${product.price} € | Kundenbewertung: ${product.review}")
                         }
 
+                        // Auswahlmenü um ein Produkt in den Warenkorb abzulegen oder wieder zum Menü der Hauptkategorie zu gelangen
                         println("\nBitte geben Sie die Produkt-ID ein um den Artikel in den Warenkorb hinzuzufügen.")
                         println("Andernfalls geben Sie 0 ein um wieder zur Hauptkategorie zu gelangen:")
-                        val userInputProduct = readln().toInt()
+
+                        val userInputProduct = safeExecute {
+                            val input = readln()
+                            val validInput = input.toIntOrNull()
+                                ?: throw IllegalArgumentException("${errorMessage()} ${produktList()}")
+                            validInput
+                        }
+
+                        // Nutzereingabe prüfen und entspreechend code ausführen
+                        // Zurück zur Hauptkategorie Ansicht
                         if (userInputProduct == 0) {
                             produktList()
+                        // Funktion aufrufen, um das Produkt in den Warenkorb abzulegen
                         } else {
                             addToCard(userInputProduct)
                         }
 
+                    // Falls der Nutzer eine Eingabe tätigt und kein Produkt zu seiner Eingabe vorhanden ist
                     } else {
-                        println("\nNetter Versuch, aber zu Nr. $userInputSubCategory gibt es keine Unterkategorie :)")
+                        println("\nBitte unterlasse die Falscheingabe! Der Code funktioniert\n:) :) :)\nEs gibt keine Unterkategorie zu der Eingabe!")
+                        produktList()
                     }
                 }
+            // Falls der Nutzer eine Eingabe tätigt und keine Unterkategorie zu seiner Eingabe vorhanden ist
             } else {
-                println("\nNetter Versuch, aber zu Nr. $userInputMainCategory gibt es keine Kategorie :)")
+                println("\nHmmm bitte genauer hinschauen! Es gibt keine Hauptkategorie zu deiner Eingabe!")
+                produktList()
             }
         }
     }
-
 }
 
 
-
-
-// Anzeigen der kompletten Produkte als Liste mit Sortierungsfunktionen
+// Aufruf der kompletten Produkte als Liste mit Sortierungsfunktionen
 fun totalProductList() {
     val productManager = showProductList()
 
@@ -275,15 +140,13 @@ fun totalProductList() {
         // Weitere Menü Funktionen
         println("\n### Menü ###")
 
-
-        println("[1] Sortieren nach Produktbezeichnung, [2] Sortieren nach Preis, [3] Filteroptionen, [4] Zurück zum Menü")
+        println("[1] Sortieren nach Produktbezeichnung\n[2] Sortieren nach Preis\n[3] Filteroptionen\n[4] Zurück zum Menü")
         // Hier Fehlerbehandlung!
         val userInputSorts = safeExecute {
             val input = readln()
             val validInput = input?.toIntOrNull()
                 ?: throw IllegalArgumentException("${errorMessage()} ${totalProductList()}")
             validInput
-
         }
 
         // Funktionsaufrufe des Nutzers
@@ -292,7 +155,6 @@ fun totalProductList() {
                 println("\n### Produkte nach Name sortiert ###")
                 val productsSortedByName = productManager.sortName(allProducts)
                 productManager.printProductList(productsSortedByName)
-
             }
 
             2 -> {  // Sortieren der Produktliste nach Preis aufsteigend
@@ -315,14 +177,14 @@ fun totalProductList() {
 }
 
 
-// Filteroptionen anzeigen
+// Funktion zur Anzeige der Filteroptionen
 fun filterOptions(products: List<Product>) {
     while (true) {
         println("\n### Filteroptionen ###")
 
         while (true) {
             println("\n### Filteroptionen ###")
-            println("[1] Nach Produktbezeichnung filtern, [2] Nach Preis filtern, [3] Zurück")
+            println("[1] Nach Produktbezeichnung filtern\n[2] Nach Preis filtern\n[3] Beenden")
 
             // Benutzereingabe für Filteroptionen (mit safeExecute)
             val userInputFilter = safeExecute {
@@ -379,7 +241,7 @@ fun filterOptions(products: List<Product>) {
                 }
 
                 3 -> {
-                    break // Zurück zum Menü
+                    customerMenue()
                 }
 
                 else -> println("Eingabe nicht erkannt!")

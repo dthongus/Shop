@@ -1,19 +1,18 @@
-// Modul mit einer Klasse für Unterkategorieliste
+// Modul mit einer Klasse für die Erzeugung einer Unterkategorieliste
+
 
 import java.sql.Connection
 import java.sql.DriverManager
 
 
-// Klasse für die Erstellung der Produktliste in der Unterkategorie
+// Klasse, die den Kategorienamen aufnimmt.
 class SubCategory(val name: String) {
 
     // Erstellen eine companion object damit die Methode "getSubcategoriesByMainCategory" direkt über den Klassennamen aufgerufen werden kann
     // und keine Instanz der Klasse benötigt (Kapselung)
     companion object {
         fun getSubcategoriesByMainCategory(mainCategoryName: String): List<SubCategory> {
-            // Liste erzeugen
             val subCategories = mutableListOf<SubCategory>()
-            // Datenbank Verbindung herstellen und Anweisungen
             val connection: Connection = DriverManager.getConnection("jdbc:sqlite:Database.db")
             val query = "SELECT name FROM subCategory WHERE mainCategoryLink = ?"
             val preparedStatement = connection.prepareStatement(query)
@@ -25,11 +24,11 @@ class SubCategory(val name: String) {
                 val name = resultSet.getString("name")
                 subCategories.add(SubCategory(name))
             }
-
             resultSet.close()
             preparedStatement.close()
             connection.close()
 
+            // Rückgabe der Kategorieliste
             return subCategories
         }
     }

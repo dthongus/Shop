@@ -1,4 +1,5 @@
-// Modul mit einer Klasse für die Produktliste
+// Modul mit einer Klasse für die Erstellung einer Produktliste
+
 
 import java.sql.Connection
 import java.sql.DriverManager
@@ -21,7 +22,7 @@ class Productlist(val productId: Int, val name: String, val price: Double, val a
             val preparedStatement = connection.prepareStatement(query)
             preparedStatement.setString(1, subCategoryName)
 
-            // Durch die Zeilen der Tabelle iterieren und in Liste einfügen
+            // Durchlauf durch alle Zeilen der Tabelle um daten zu holen ...
             val resultSet = preparedStatement.executeQuery()
             while (resultSet.next()) {
                 val productIdList = resultSet.getInt("product_id")
@@ -30,6 +31,7 @@ class Productlist(val productId: Int, val name: String, val price: Double, val a
                 val amountList = resultSet.getInt("amount")
                 val reviewList = resultSet.getString("review")
 
+                // ... und in die Liste einfügen
                 products.add(Productlist(productIdList, nameList, priceList, amountList, reviewList))
             }
 
